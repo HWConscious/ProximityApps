@@ -64,32 +64,37 @@ namespace HWCProximityWindowsApp
         // Method to initialize Push Notification
         private async void PushNotificationInitializeAsync()
         {
+            PushNotificationChannel notificationChannel = null;
+
             // Initialize push notification interface
             if (this.PushNotificationInterface == null)
             {
                 this.PushNotificationInterface = new HwcPushNotificationInterface();
-                bool isNewChannelCreated = await this.PushNotificationInterface.RequestNotificationChannelAsync();
-                if (isNewChannelCreated)
+
+                try
                 {
-                    PushNotificationChannel notificationChannel = null;
-                    try
+                    if (await this.PushNotificationInterface.RequestNotificationChannelAsync())
                     {
                         notificationChannel = this.PushNotificationInterface.NotificationChannel;
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        HwcLog.LogAsync(HwcLog.LoggingLevel.Error, "Error in creating new notification channel. EXCEPTION: " + ex.Message);
+                        HwcLog.LogAsync(HwcLog.LoggingLevel.Error, "Notification channel is  not created");
                     }
+                }
+                catch (Exception ex)
+                {
+                    HwcLog.LogAsync(HwcLog.LoggingLevel.Error, "Error in creating new notification channel. EXCEPTION: " + ex.Message);
+                }
 
-                    if (notificationChannel != null)
-                    {
-                        // New notification channel created
-                        HwcLog.LogAsync(HwcLog.LoggingLevel.Information, "New notification channel created. Channel URI: " + notificationChannel.Uri);
+                if (notificationChannel != null)
+                {
+                    // New notification channel created
+                    HwcLog.LogAsync(HwcLog.LoggingLevel.Information, "New notification channel created. Channel URI: " + notificationChannel.Uri);
 
-                        notificationChannel.PushNotificationReceived += NotificationChannel_PushNotificationReceived;
+                    notificationChannel.PushNotificationReceived += NotificationChannel_PushNotificationReceived;
 
-                        TriggerFirstPushNotificationForNewChannelFromCloudService();
-                    }
+                    TriggerFirstPushNotificationForNewChannelFromCloudService();
                 }
             }
         }
