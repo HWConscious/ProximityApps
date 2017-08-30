@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26403.7
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HWCProximityWindowsApp", "HWCProximityWindowsApp\HWCProximityWindowsApp.csproj", "{88D89A25-DCE3-4D35-ABFB-54AEE5E0B93F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HWC_ProximityWindowsApp", "HWC_ProximityWindowsApp\HWC_ProximityWindowsApp.csproj", "{88D89A25-DCE3-4D35-ABFB-54AEE5E0B93F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

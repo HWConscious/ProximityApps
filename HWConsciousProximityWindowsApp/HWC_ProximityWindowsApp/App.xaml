@@ -1,15 +1,15 @@
 ﻿<Application
-    x:Class="HWCProximityWindowsApp.App"
+    x:Class="HWC_ProximityWindowsApp.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:HWCProximityWindowsApp"
+    xmlns:local="using:HWC_ProximityWindowsApp"
     RequestedTheme="Light">
 
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <!-- Styles that define common aspects of the platform look and feel -->
-                <ResourceDictionary Source="Common/HwcStyles/HwcCustomStyles.xaml"/>
+                <ResourceDictionary Source="ProximityApp/Styles/CustomStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

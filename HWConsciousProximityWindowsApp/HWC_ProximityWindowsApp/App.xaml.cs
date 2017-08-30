@@ -1,24 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
+using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 
-using HWCProximityWindowsApp.Common.HwcClasses;
+using HWC_ProximityWindowsApp.ProximityApp.Models;
 
-namespace HWCProximityWindowsApp
+namespace HWC_ProximityWindowsApp
 {
     /// <summary>
     /// Provides application-specific behavior to supplement the default Application class.
@@ -42,6 +33,7 @@ namespace HWCProximityWindowsApp
         /// <param name="e">Details about the launch request and process.</param>
         protected override async void OnLaunched(LaunchActivatedEventArgs e)
         {
+            // Initialize the App
             if (await AppInitializeAsync() == true)
             {
                 Frame rootFrame = Window.Current.Content as Frame;
@@ -66,6 +58,9 @@ namespace HWCProximityWindowsApp
 
                 if (e.PrelaunchActivated == false)
                 {
+                    // Launch the app in FullScreen mode
+                    ApplicationView.PreferredLaunchWindowingMode = ApplicationViewWindowingMode.FullScreen;
+
                     if (rootFrame.Content == null)
                     {
                         // When the navigation stack isn't restored navigate to the first page,
@@ -79,7 +74,7 @@ namespace HWCProximityWindowsApp
             }
             else
             {
-                // App initialization failed; Terminate the App;
+                // App initialization failed; terminate the App.
                 Application.Current.Exit();
             }
         }
@@ -107,29 +102,36 @@ namespace HWCProximityWindowsApp
             //TODO: Save application state and stop any background activity
             deferral.Complete();
 
-            HwcLog.LogAsync(HwcLog.LoggingLevel.Information, "Application suspended");
+            Log.LogAsync(Log.LoggingLevel.Information, "Application suspended");
         }
 
-        // Initialize the App with critical modules
+        /// <summary>
+        /// Initialize the application with critical modules
+        /// </summary>
+        /// <returns></returns>
         private async Task<bool> AppInitializeAsync()
         {
             bool retValue = true;
-            
-            if (!await HwcLog.LogInitializeAsync())                     // Initializing log class for the running session
+
+            try
+            {
+                await Log.LogInitializeAsync();     // Initializing Log model
+            }
+            catch
             {
                 retValue = false;
             }
-            else
+            
+            if (retValue == true)
             {
                 try
                 {
-                    HwcApplicationData.ApplicationDataInitialize();     // Initializing application data class
+                    AppData.AppDataInitialize();    // Initializing AppData model
                 }
                 catch(Exception ex)
                 {
-                    HwcLog.LogAsync(HwcLog.LoggingLevel.Critical, "Application Data initialization failed, terminating the app. EXCEPTION: " + ex.Message);
-                    // Application Data initialization failed; Terminate the App;
-                    Application.Current.Exit();
+                    Log.LogAsync(Log.LoggingLevel.Critical, ex.Message);
+                    Application.Current.Exit();     // AppData initialization failed; terminate the App.
                 }
             }
 
