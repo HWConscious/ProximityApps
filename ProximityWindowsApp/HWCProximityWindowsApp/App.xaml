@@ -9,7 +9,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <!-- Styles that define common aspects of the platform look and feel -->
-                <ResourceDictionary Source="Common/HwcStyles/HwcCustomStyles.xaml"/>
+                <ResourceDictionary Source="ProximityApp/Styles/CustomStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

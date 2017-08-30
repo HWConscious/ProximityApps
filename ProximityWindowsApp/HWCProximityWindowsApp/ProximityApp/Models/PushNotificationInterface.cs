@@ -2,29 +2,42 @@
 using System.Threading.Tasks;
 using Windows.Networking.PushNotifications;
 
-namespace HWCProximityWindowsApp.Common.HwcClasses
+namespace HWCProximityWindowsApp.ProximityApp.Models
 {
-    public class HwcPushNotificationInterface
+    /// <summary>
+    /// PushNotification interface
+    /// </summary>
+    public class PushNotificationInterface
     {
-        // Notification channel reference
+        #region Data members
+
+        /// <summary>
+        /// Notification channel reference
+        /// </summary>
         public PushNotificationChannel NotificationChannel { get; set; }
 
-        // Request a new notification channel
+        #endregion
+
+        #region Public methods
+
+        /// <summary>
+        /// Requests for push notification channel.
+        /// </summary>
+        /// <returns>Notification channel request status</returns>
         public async Task<bool> RequestNotificationChannelAsync()
         {
             bool retValue = false;
             bool isNewChannelSentToCloud = false;
-            PushNotificationChannel newChannel = null;
 
             // Create a new push notification channel
+            PushNotificationChannel newChannel = null;
             try
             {
                 newChannel = await PushNotificationChannelManager.CreatePushNotificationChannelForApplicationAsync();
             }
             catch (Exception ex)
             {
-                throw new Exception("Could not create a channel. " + ex.Message);
-
+                throw new Exception("Error in creating notification channel. " + ex.Message);
                 // TODO: Try three attempts with a 10-second delay between each unsuccessful attempt.
             }
 
@@ -57,26 +70,33 @@ namespace HWCProximityWindowsApp.Common.HwcClasses
             return retValue;
         }
 
-        // Get a 'Raw' type push notification for a specific channel
+        /// <summary>
+        /// Gets a RawNotification for a specific channel.
+        /// </summary>
+        /// <param name="sender">PushNotification channel as sender</param>
+        /// <param name="args">Event args</param>
+        /// <returns>Push notofication as RawNotification</returns>
         public RawNotification GetRawNotification(PushNotificationChannel sender, PushNotificationReceivedEventArgs args)
         {
-            RawNotification notification = null;
+            RawNotification rawNotification = null;
             if (sender != null && sender == this.NotificationChannel && args != null)
             {
                 if (args.NotificationType == PushNotificationType.Raw)
                 {
-                    notification = args.RawNotification;
+                    rawNotification = args.RawNotification;
                 }
                 else
                 {
-                    throw new Exception("Notification is not of 'Raw' type");
+                    throw new Exception("The push notification is not a RawNotification type.");
                 }
             }
             else
             {
-                throw new Exception("Notification channel is invalid");
+                throw new Exception("The push notification channel is invalid.");
             }
-            return notification;
+            return rawNotification;
         }
+
+        #endregion
     }
 }

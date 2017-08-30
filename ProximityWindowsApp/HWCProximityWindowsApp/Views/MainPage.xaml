@@ -15,32 +15,80 @@
             </TransitionCollection>
         </Grid.Transitions>
 
-        <ContentDialog x:Name="saveEnergyDialog" PrimaryButtonText="Open battery saver settings" SecondaryButtonText="Ignore" Title="Battery saver is on." VerticalAlignment="Center">
+        <Grid.Resources>
+            <Storyboard x:Name="_showDefaultContainerGrid">
+                <FadeInThemeAnimation Storyboard.TargetName="_defaultContainerGrid" SpeedRatio="1"/>
+                <RepositionThemeAnimation Storyboard.TargetName="_defaultContainerGrid" SpeedRatio="0.2" FromHorizontalOffset="200"/>
+            </Storyboard>
+            <Storyboard x:Name="_pointerDownNotificationImageEx">
+                <PointerDownThemeAnimation Storyboard.TargetName="_notificationContainerGrid"/>
+            </Storyboard>
+            <Storyboard x:Name="_pointerUpNotificationImageEx">
+                <PointerUpThemeAnimation Storyboard.TargetName="_notificationContainerGrid"/>
+            </Storyboard>
+            <Storyboard x:Name="_showUserEventConfirmation">
+                <FadeInThemeAnimation Storyboard.TargetName="_userEventConfirmationContainerGrid" SpeedRatio="0.4"/>
+                <RepositionThemeAnimation Storyboard.TargetName="_userEventConfirmationContainerGrid" SpeedRatio="0.2" FromHorizontalOffset="40"/>
+            </Storyboard>
+            <Storyboard x:Name="_hideUserEventConfirmation">
+                <FadeOutThemeAnimation Storyboard.TargetName="_userEventConfirmationContainerGrid" SpeedRatio="0.2"/>
+            </Storyboard>
+        </Grid.Resources>
+
+        <Grid x:Name="_userEventConfirmationContainerGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Visibility="Visible">
+            <controls:ImageEx x:Name="_userEventConfirmationImageEx"
+                IsCacheEnabled="True"
+                Source="/ProximityApp/MediaFiles/Image_ThankYou.jpg"
+                Stretch="Uniform"
+                PlaceholderSource="/ProximityApp/MediaFiles/Image_ThankYou.jpg"
+                PlaceholderStretch="UniformToFill"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="606"
+                Height="363"/>
+        </Grid>
+
+        <Grid x:Name="_notificationContainerGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Visibility="Visible">
+            <controls:ImageEx x:Name="_notificationImageEx"
+                IsCacheEnabled="True"
+                Source="{Binding Thumbnail}"
+                Stretch="Uniform"
+                PlaceholderSource="/Assets/ImageExPlaceholder.jpg"
+                PlaceholderStretch="UniformToFill"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                ImageExOpened="NotificationImageEx_ImageExOpened"
+                PointerPressed="NotificationImageEx_PointerPressed"
+                PointerReleased="NotificationImageEx_PointerReleased"/>
+        </Grid>
+
+
+        <ContentDialog x:Name="_saveEnergyContentDialog" PrimaryButtonText="Open battery saver settings" SecondaryButtonText="Ignore" Title="Battery saver is on." VerticalAlignment="Center">
             <StackPanel>
                 <TextBlock TextWrapping="WrapWholeWords">
                      <LineBreak/><Run>Battery saver is on and you may not receive push notifications.</Run><LineBreak/>
                      <LineBreak/><Run>You can choose to allow this app to work normally while in battery saver, including receiving push notifications.</Run>
                      <LineBreak/>
                 </TextBlock>
-                <CheckBox x:Name="dontAskAgainEnergySavingBox" Content="OK, got it."/>
+                <CheckBox x:Name="_dontAskAgainEnergySavingCheckBox" Content="OK, got it."/>
             </StackPanel>
         </ContentDialog>
 
-        <controls:ImageEx x:Name="imageExControl1"
-          IsCacheEnabled="True"
-          Source="{Binding Thumbnail}"
-          Stretch="Uniform"
-          PlaceholderSource="/Assets/Photos/ImageExPlaceholder.jpg"
-          PlaceholderStretch="UniformToFill"
-          HorizontalAlignment="Center"
-          VerticalAlignment="Center" />
+        <ContentDialog x:Name="_configureDisplayEndpointIDContentDialog" PrimaryButtonText="Save DisplayEndpoint ID" SecondaryButtonText="Cancel" Title="Configure DisplayEndpoint ID" VerticalAlignment="Center">
+            <StackPanel>
+                <TextBlock TextWrapping="WrapWholeWords">
+                    <LineBreak/><Run>Ask your Administrator for DisplayEndpoint ID for this device.</Run><LineBreak/>
+                    <LineBreak/><Run>DisplayEndpointID</Run>
+                </TextBlock>
+                <TextBox x:Name="_configureDisplayEndpointIDTextBox" />
+            </StackPanel>
+        </ContentDialog>
 
-
-        <Grid x:Name="gridContainer" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Visibility="Visible">
+        <Grid x:Name="_defaultContainerGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Visibility="Visible">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <!-- HWConscious logo -->
-                <Image x:Name="imageHwcLogoBottom" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0" Stretch="None" Visibility="Visible" Source="ms-appx:///Common/HwcMediaFiles/Logo_Hwc_Medium.png"/>
-                <ProgressRing x:Name="progressRing" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,20,0,0" Height="40" Width="40" IsActive="True" Foreground="{StaticResource hwcPrimaryColor}" />
+                <Image x:Name="_hwcLogoBottomImage" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0" Stretch="None" Visibility="Visible" Source="ms-appx:///ProximityApp/MediaFiles/Logo_Hwc_Medium.png"/>
+                <ProgressRing x:Name="_progressRing" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,20,0,0" Height="40" Width="40" IsActive="True" Foreground="{StaticResource PrimaryColor}" />
             </StackPanel>
         </Grid>
     </Grid>
