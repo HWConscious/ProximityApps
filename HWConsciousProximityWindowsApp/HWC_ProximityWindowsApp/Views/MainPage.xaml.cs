@@ -72,13 +72,14 @@ namespace HWC_ProximityWindowsApp
                 _notificationRestClient.HttpMethod = HttpVerb.GET;
                 _notificationRestClient.EndPoint = Constants.RestApiEndpoint + "/display_endpoints/" + _displayEndpointID + "/notifications";
                 _notificationRestClient.Headers["x-api-key"] = Constants.XApiKeyValue;
-
+                _notificationRestClient.TimeoutInMs = 1000; // 1 second timeout
 
                 // Create the REST client for pushing Events
                 _eventRestClient = new RestClient();
                 _eventRestClient.HttpMethod = HttpVerb.POST;
                 _eventRestClient.EndPoint = Constants.RestApiEndpoint + "/display_endpoints/" + _displayEndpointID + "/events";
                 _eventRestClient.Headers["x-api-key"] = Constants.XApiKeyValue;
+                _eventRestClient.TimeoutInMs = 4000;    // 4 seconds timeout
             }
         }
 
@@ -113,31 +114,18 @@ namespace HWC_ProximityWindowsApp
             try
             {
                 // Make REST call to pull Notification
-                var startTime = DateTime.Now;
                 string responseValue = await _notificationRestClient.MakeRequestAsync();
-                var endTime = DateTime.Now;
+                Log.DebugLog("Notification pull response: " + responseValue);
 
-                // Discard the response if the request took more than 1 second for pulling
-                if (endTime.Subtract(startTime).TotalMilliseconds > 1000)
+                // Deserialize the response value into the buffered Notification object
+                if (_bufferedNotification == null)
                 {
-                    string log = "Notification pulling request took more than 1 second, hence discarded.";
-                    Log.DebugLog(log);
-                    Log.LogAsync(Log.LoggingLevel.Warning, log);
+                    _bufferedNotification = JsonConvert.DeserializeObject<Notification>(responseValue);
+                    LoadOrUnloadNotification(); // Fresh invoke
                 }
                 else
                 {
-                    Log.DebugLog("Notification pull response: " + responseValue);
-
-                    // Deserialize the response value into buffered Notification object
-                    if (_bufferedNotification == null)
-                    {
-                        _bufferedNotification = JsonConvert.DeserializeObject<Notification>(responseValue);
-                        LoadOrUnloadNotification(); // Fresh invoke
-                    }
-                    else
-                    {
-                        _bufferedNotification = JsonConvert.DeserializeObject<Notification>(responseValue);
-                    }
+                    _bufferedNotification = JsonConvert.DeserializeObject<Notification>(responseValue);
                 }
             }
             catch (Exception ex)

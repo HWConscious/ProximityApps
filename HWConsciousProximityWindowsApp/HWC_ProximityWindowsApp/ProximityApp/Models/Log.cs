@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using Windows.Storage;
@@ -17,7 +18,8 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
         private static StorageFolder _level1StorageFolder = null;
         private static StorageFolder _logOutputFolder = null;
         private static StorageFile _fileWriteLog = null;    // Log file handler
-        
+        private static SemaphoreSlim _fileLock = new SemaphoreSlim(initialCount: 1);
+
         /// <summary>
         /// Logging levels to indicate log type.
         /// </summary>
@@ -86,8 +88,11 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
         /// <param name="callerLineNumber">Line number of source code</param>
         public static async void LogAsync(Log.LoggingLevel loggingLevel, string logString, [CallerMemberName] string callerFunctionName = "", [CallerLineNumber] int callerLineNumber = 0)
         {
-            string log = DateTime.UtcNow.ToString("o") + "::" + " [" + loggingLevel + "] " + logString + " | "
-                                + callerFunctionName + "() | " + callerLineNumber + Environment.NewLine;
+            string log = (loggingLevel == LoggingLevel.Information) ?
+                DateTime.UtcNow.ToString("o") + "::" + " [" + loggingLevel + "] " + logString + Environment.NewLine :
+                DateTime.UtcNow.ToString("o") + "::" + " [" + loggingLevel + "] " + logString + " | " + callerFunctionName + "() | " + callerLineNumber + Environment.NewLine;
+
+            await _fileLock.WaitAsync();
             try
             {
                 await FileIO.AppendTextAsync(_fileWriteLog, log);
@@ -95,6 +100,10 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
             catch (Exception ex)
             {
                 throw new Exception("Error in adding log string to the log file. " + ex.Message);
+            }
+            finally
+            {
+                _fileLock.Release();
             }
         }
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Windows.UI.Popups;
 using Windows.UI.Xaml.Media.Imaging;
@@ -149,6 +150,21 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
         public string ContentSubject { get; set; }
         public string ContentCaption { get; set; }
         public string ContentBody { get; set; }
+        public List<Coupon> Coupons { get; set; }
+    }
+
+    /// <summary>
+    /// Representation of Coupon.
+    /// </summary>
+    public class Coupon
+    {
+        public long CouponID { get; set; }
+        public long ClientSpotID { get; set; }
+        public long? NotificationID { get; set; }
+        public string Name { get; set; }
+        public string CouponCode { get; set; }
+        public string Description { get; set; }
+        public double DiscountCents { get; set; }
     }
 
     #endregion
