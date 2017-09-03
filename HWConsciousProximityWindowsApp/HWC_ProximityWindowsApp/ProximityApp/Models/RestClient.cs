@@ -8,17 +8,6 @@ using System.Threading.Tasks;
 namespace HWC_ProximityWindowsApp.ProximityApp.Models
 {
     /// <summary>
-    /// Representation of REST request method types.
-    /// </summary>
-    public enum HttpVerb
-    {
-        GET,
-        POST,
-        PUT,
-        DELETE
-    }
-
-    /// <summary>
     /// REST client interface
     /// </summary>
     public class RestClient
@@ -32,6 +21,17 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
         public string ContentType { get; set; }
         public string RequestContent { get; set; }
         public int? TimeoutInMs { get; set; }
+
+        /// <summary>
+        /// REST request methods.
+        /// </summary>
+        public enum HttpVerb
+        {
+            GET,
+            POST,
+            PUT,
+            DELETE
+        }
 
         #endregion
 

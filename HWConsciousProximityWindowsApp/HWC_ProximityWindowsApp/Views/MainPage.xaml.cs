@@ -69,14 +69,14 @@ namespace HWC_ProximityWindowsApp
             {
                 // Create the REST client for pulling Notifications
                 _notificationRestClient = new RestClient();
-                _notificationRestClient.HttpMethod = HttpVerb.GET;
+                _notificationRestClient.HttpMethod = RestClient.HttpVerb.GET;
                 _notificationRestClient.EndPoint = Constants.RestApiEndpoint + "/display_endpoints/" + _displayEndpointID + "/notifications";
                 _notificationRestClient.Headers["x-api-key"] = Constants.XApiKeyValue;
                 _notificationRestClient.TimeoutInMs = 1000; // 1 second timeout
 
                 // Create the REST client for pushing Events
                 _eventRestClient = new RestClient();
-                _eventRestClient.HttpMethod = HttpVerb.POST;
+                _eventRestClient.HttpMethod = RestClient.HttpVerb.POST;
                 _eventRestClient.EndPoint = Constants.RestApiEndpoint + "/display_endpoints/" + _displayEndpointID + "/events";
                 _eventRestClient.Headers["x-api-key"] = Constants.XApiKeyValue;
                 _eventRestClient.TimeoutInMs = 4000;    // 4 seconds timeout
