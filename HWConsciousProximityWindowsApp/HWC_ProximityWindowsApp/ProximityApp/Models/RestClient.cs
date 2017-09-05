@@ -1,26 +1,26 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Net;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace HWC_ProximityWindowsApp.ProximityApp.Models
 {
     /// <summary>
-    /// REST client interface
+    /// REST client
     /// </summary>
     public class RestClient
     {
         #region Data members
 
-        public HttpVerb HttpMethod { get; set; }
-        public string EndPoint { get; set; }
-        public ICredentials Credentials { get; set; }
-        public WebHeaderCollection Headers { get; set; }
-        public string ContentType { get; set; }
-        public string RequestContent { get; set; }
-        public int? TimeoutInMs { get; set; }
+        private readonly HttpVerb _httpMethod;
+        private readonly Uri _endPoint;
+        private readonly Dictionary<string, string> _headers;
+        private readonly string _contentType;
+        private string _content { get; set; }
+        private int? _timeoutInMs { get; set; }
 
         /// <summary>
         /// REST request methods.
@@ -40,14 +40,20 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
         /// <summary>
         /// REST client constructor
         /// </summary>
-        public RestClient()
+        /// <param name="httpMethod">Method to be used for REST call</param>
+        /// <param name="endPoint">REST endpoint</param>
+        /// <param name="headers">HTTP request headers</param>
+        /// <param name="contentType">Request content type. Default: "application/json"</param>
+        /// <param name="content">Request content</param>
+        /// <param name="timeoutInMs">Request timeout value in millisecond</param>
+        public RestClient(HttpVerb httpMethod, string endPoint, Dictionary<string, string> headers = null, string contentType = null, string content = null, int? timeoutInMs = null)
         {
-            HttpMethod = HttpVerb.GET;
-            EndPoint = string.Empty;
-            Credentials = null;
-            Headers = new WebHeaderCollection();
-            ContentType = "application/json";
-            RequestContent = string.Empty;
+            _httpMethod = httpMethod;
+            _endPoint = new Uri(endPoint, UriKind.Absolute);
+            _headers = headers;
+            _contentType = contentType ?? "application/json";
+            _content = content ?? string.Empty;
+            _timeoutInMs = timeoutInMs;
         }
 
         #endregion
@@ -65,11 +71,16 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
             // Create a HttpWebRequest instance for web request
             try
             {
-                webRequest = (HttpWebRequest)WebRequest.Create(EndPoint);
-                webRequest.Method = HttpMethod.ToString();
-                webRequest.Credentials = Credentials;
-                webRequest.Headers = Headers;
-                webRequest.ContentType = ContentType;
+                webRequest = (HttpWebRequest)WebRequest.Create(_endPoint);
+                webRequest.Method = _httpMethod.ToString();
+                webRequest.ContentType = _contentType;
+                if (_headers?.Count > 0)
+                {
+                    foreach (KeyValuePair<string, string> header in _headers)
+                    {
+                        webRequest.Headers[header.Key] = header.Value;
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -84,6 +95,45 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
             return null;
         }
 
+        /// <summary>
+        /// Update request content
+        /// </summary>
+        /// <param name="content">Request content</param>
+        /// <returns></returns>
+        public bool UpdateContent(string content)
+        {
+            if (!string.IsNullOrEmpty(content))
+            {
+                _content = content;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Update request timeout
+        /// </summary>
+        /// <param name="timeoutInMs">Timeout value in millisecond</param>
+        /// <returns></returns>
+        public bool UpdateTimeout(int? timeoutInMs)
+        {
+            if (timeoutInMs != null && timeoutInMs < 0)
+            {
+                return false;
+            }
+            _timeoutInMs = timeoutInMs;
+            return true;
+        }
+
+        /// <summary>
+        /// Get Endpoint of the REST client
+        /// </summary>
+        /// <returns></returns>
+        public string GetEndpoint()
+        {
+            return _endPoint.AbsolutePath;
+        }
+
         #endregion
 
         #region Private methods
@@ -91,6 +141,7 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
         /// <summary>
         /// Processes HTTP web request
         /// </summary>
+        /// <param name="webRequest"></param>
         /// <returns>Response of the request</returns>
         private async Task<string> ProcessWebRequestAsync(HttpWebRequest webRequest)
         {
@@ -98,14 +149,14 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
 
             if (webRequest != null)
             {
-                if (HttpMethod != HttpVerb.GET)
+                if (_httpMethod != HttpVerb.GET)
                 {
                     // Write request content into web request stream
                     try
                     {
                         using (Stream requestStream = await webRequest.GetRequestStreamAsync())
                         {
-                            byte[] contentInBytes = Encoding.UTF8.GetBytes(RequestContent);
+                            byte[] contentInBytes = Encoding.UTF8.GetBytes(_content);
                             requestStream.Write(contentInBytes, 0, contentInBytes.Length);
                         }
                     }
@@ -121,7 +172,7 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
                 {
                     // Set a timer to abort the web requset on timeout (if any)
                     CancellationTokenSource abortWebRequestTaskCancellationTokenSource = null;
-                    if (TimeoutInMs != null && TimeoutInMs > -1)
+                    if (_timeoutInMs != null && _timeoutInMs > -1)
                     {
                         abortWebRequestTaskCancellationTokenSource = new CancellationTokenSource();
                         AbortWebRequestOnTimeoutAsync(webRequest, abortWebRequestTaskCancellationTokenSource.Token);
@@ -130,7 +181,7 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
                     // Make the web request
                     webResponse = (HttpWebResponse)await webRequest.GetResponseAsync();
 
-                    // Cancel the aborting web request operation now as it made the full cycle before the timeout timer got hit
+                    // Cancel the task for aborting web request now as it made the full cycle before the timeout timer got hit
                     abortWebRequestTaskCancellationTokenSource?.Cancel();
 
                     // Process the response stream
@@ -148,12 +199,13 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
                 }
                 catch (WebException ex)
                 {
-                    // Handle the different web exceptions
+                    // Handle different web exceptions
                     if (ex.Status == WebExceptionStatus.ProtocolError)
                     {
                         var statusCode = ((HttpWebResponse)ex.Response).StatusCode;
                         if (statusCode != HttpStatusCode.OK)
                         {
+                            // Throw http status code
                             throw new Exception(((int)statusCode).ToString());
                         }
                     }
@@ -167,10 +219,7 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
                     }
                 }
 
-                if (webResponse != null)
-                {
-                    webResponse.Dispose();
-                }
+                webResponse?.Dispose();
             }
 
             return responseValue;
@@ -187,7 +236,7 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
             {
                 await Task.Run(async () =>
                 {
-                    await Task.Delay(TimeoutInMs ?? 0); // Set timeout timer
+                    await Task.Delay(_timeoutInMs ?? 0); // Set timeout timer
                     if (!cancellationToken.IsCancellationRequested)
                     {
                         webRequest.Abort(); // Abort the web request

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Windows.UI.Core;
 using Windows.UI.ViewManagement;
@@ -67,19 +68,25 @@ namespace HWC_ProximityWindowsApp
         {
             if (_displayEndpointID != null)
             {
+                var requestHeaders = new Dictionary<string, string>() { { "x-api-key", Constants.XApiKeyValue } };
+
                 // Create the REST client for pulling Notifications
-                _notificationRestClient = new RestClient();
-                _notificationRestClient.HttpMethod = RestClient.HttpVerb.GET;
-                _notificationRestClient.EndPoint = Constants.RestApiEndpoint + "/display_endpoints/" + _displayEndpointID + "/notifications";
-                _notificationRestClient.Headers["x-api-key"] = Constants.XApiKeyValue;
-                _notificationRestClient.TimeoutInMs = 1000; // 1 second timeout
+                _notificationRestClient = new RestClient(
+                    RestClient.HttpVerb.GET,
+                    Constants.RestApiEndpoint + "/display_endpoints/" + _displayEndpointID + "/notifications",
+                    requestHeaders,
+                    null,
+                    null,
+                    1000);  // 1 second timeout
 
                 // Create the REST client for pushing Events
-                _eventRestClient = new RestClient();
-                _eventRestClient.HttpMethod = RestClient.HttpVerb.POST;
-                _eventRestClient.EndPoint = Constants.RestApiEndpoint + "/display_endpoints/" + _displayEndpointID + "/events";
-                _eventRestClient.Headers["x-api-key"] = Constants.XApiKeyValue;
-                _eventRestClient.TimeoutInMs = 4000;    // 4 seconds timeout
+                _eventRestClient = new RestClient(
+                    RestClient.HttpVerb.POST,
+                    Constants.RestApiEndpoint + "/display_endpoints/" + _displayEndpointID + "/events",
+                    requestHeaders,
+                    null,
+                    null,
+                    4000);  // 4 seconds timeout
             }
         }
 
@@ -221,11 +228,11 @@ namespace HWC_ProximityWindowsApp
                 try
                 {
                     // Prepare content for REST request
-                    _eventRestClient.RequestContent = "{\"Type\": \"DisplayEndpoint_Touch\"," + 
-                                                        "\"EventAtTimestamp\": \"" + DateTime.UtcNow.ToString() + "\"," +
-                                                        "\"SourceType\": \"Notification\"," +
-                                                        "\"SourceID\": " + notificationID + "," +
-                                                        "\"Message\": \"NotificationID " + notificationID + " touched on a DisplayEndpointID" + _displayEndpointID + "\"}";
+                    _eventRestClient.UpdateContent("{\"Type\": \"DisplayEndpoint_Touch\"," + 
+                                                    "\"EventAtTimestamp\": \"" + DateTime.UtcNow.ToString() + "\"," +
+                                                    "\"SourceType\": \"Notification\"," +
+                                                    "\"SourceID\": " + notificationID + "," +
+                                                    "\"Message\": \"NotificationID " + notificationID + " touched on a DisplayEndpointID" + _displayEndpointID + "\"}");
                 
                     // Make REST call to push user event
                     string responseValue = await _eventRestClient.MakeRequestAsync();
