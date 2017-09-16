@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Windows.UI.Core;
 using Windows.UI.ViewManagement;
@@ -27,6 +29,7 @@ namespace HWC_ProximityWindowsApp
         private RestClient _notificationRestClient { get; set; }
         private RestClient _eventRestClient { get; set; }
         private Notification _bufferedNotification { get; set; }
+        private Dictionary<long, Notification> _receivedNotifications { get; set; }
         private bool _isUserEventConfirmationShowing = false;
 
         #endregion
@@ -49,11 +52,20 @@ namespace HWC_ProximityWindowsApp
             // Validate the runtime
             if (await IsRuntimeValidatedAsync() == true)
             {
+                // Show default panel
+                _showDefaultPanel.Begin();
+
+                // Create Notification timeout timer
+                _notificationTimeoutTimer = new DispatcherTimer();
+                _notificationTimeoutTimer.Tick += NotificationTimeoutTimer_Tick;
+
                 // Initialize REST client
                 RestClientInitialize();
 
                 // Initialize Notification pulling
                 PullNotificationInitialize();
+
+                InactiveProgressRing();
             }
             else
             {
@@ -67,31 +79,40 @@ namespace HWC_ProximityWindowsApp
         {
             if (_displayEndpointID != null)
             {
-                // Create the REST client for pulling Notifications
-                _notificationRestClient = new RestClient();
-                _notificationRestClient.HttpMethod = HttpVerb.GET;
-                _notificationRestClient.EndPoint = Constants.RestApiEndpoint + "/display_endpoints/" + _displayEndpointID + "/notifications";
-                _notificationRestClient.Headers["x-api-key"] = Constants.XApiKeyValue;
+                var requestHeaders = new Dictionary<string, string>() { { "x-api-key", Constants.XApiKeyValue } };
 
+                // Create the REST client for pulling Notifications
+                _notificationRestClient = new RestClient(
+                    RestClient.HttpVerb.GET,
+                    Constants.RestApiEndpoint + "/display_endpoints/" + _displayEndpointID + "/notifications",
+                    requestHeaders,
+                    null,
+                    null,
+                    1000);  // 1 second timeout
 
                 // Create the REST client for pushing Events
-                _eventRestClient = new RestClient();
-                _eventRestClient.HttpMethod = HttpVerb.POST;
-                _eventRestClient.EndPoint = Constants.RestApiEndpoint + "/display_endpoints/" + _displayEndpointID + "/events";
-                _eventRestClient.Headers["x-api-key"] = Constants.XApiKeyValue;
+                _eventRestClient = new RestClient(
+                    RestClient.HttpVerb.POST,
+                    Constants.RestApiEndpoint + "/display_endpoints/" + _displayEndpointID + "/events",
+                    requestHeaders,
+                    null,
+                    null,
+                    4000);  // 4 seconds timeout
             }
         }
 
         // Initialize Notification pulling from cloud
         private void PullNotificationInitialize()
         {
+            // Create dictionary for received Notifications
+            _receivedNotifications = new Dictionary<long, Notification>();
+
             // Create & start the Notification pull timer
             _notificationPullTimer = new DispatcherTimer();
             _notificationPullTimer.Interval = TimeSpan.FromMilliseconds(Constants.NotificationPullFrequencyInMs);
             _notificationPullTimer.Tick += NotificationPullTimer_Tick;
             _notificationPullTimer.Start();         // Start Notification pull timer
             NotificationPullTimer_Tick(null, null); // Make a manual tick for Notification pull timer
-            InactiveProgressRing();
         }
 
         #endregion
@@ -101,10 +122,7 @@ namespace HWC_ProximityWindowsApp
         // Notification pull timer ticked event
         private void NotificationPullTimer_Tick(object sender, object e)
         {
-            if (!_isUserEventConfirmationShowing)
-            {
-                PullNotificationAsync();
-            }
+            PullNotificationAsync();
         }
         
         // Pull Notification from cloud
@@ -113,31 +131,25 @@ namespace HWC_ProximityWindowsApp
             try
             {
                 // Make REST call to pull Notification
-                var startTime = DateTime.Now;
                 string responseValue = await _notificationRestClient.MakeRequestAsync();
-                var endTime = DateTime.Now;
+                Log.DebugLog("Notification pull response: " + responseValue);
 
-                // Discard the response if the request took more than 1 second for pulling
-                if (endTime.Subtract(startTime).TotalMilliseconds > 1000)
+                // Deserialize the response value as Notification
+                var receivedNotification = JsonConvert.DeserializeObject<Notification>(responseValue);
+                if (receivedNotification != null)
                 {
-                    string log = "Notification pulling request took more than 1 second, hence discarded.";
-                    Log.DebugLog(log);
-                    Log.LogAsync(Log.LoggingLevel.Warning, log);
+                    _receivedNotifications[receivedNotification.NotificationID] = receivedNotification;
+                }
+
+                // Assign received Notification into the buffered Notification object
+                if (_bufferedNotification == null)
+                {
+                    _bufferedNotification = receivedNotification;
+                    LoadOrUnloadNotification(); // Fresh invoke
                 }
                 else
                 {
-                    Log.DebugLog("Notification pull response: " + responseValue);
-
-                    // Deserialize the response value into buffered Notification object
-                    if (_bufferedNotification == null)
-                    {
-                        _bufferedNotification = JsonConvert.DeserializeObject<Notification>(responseValue);
-                        LoadOrUnloadNotification(); // Fresh invoke
-                    }
-                    else
-                    {
-                        _bufferedNotification = JsonConvert.DeserializeObject<Notification>(responseValue);
-                    }
+                    _bufferedNotification = receivedNotification;
                 }
             }
             catch (Exception ex)
@@ -152,6 +164,9 @@ namespace HWC_ProximityWindowsApp
         // Load or unload the buffered Notification
         private void LoadOrUnloadNotification()
         {
+            // Hide press-now panel
+            _hideNotificationPressNowPanel.Begin();
+
             if (_bufferedNotification != null)
             {
                 // There is a Notification to show
@@ -165,8 +180,12 @@ namespace HWC_ProximityWindowsApp
                 // There isn't any Notification to show
                 // Clean-up Notification's UI control
                 CleanUpNotificationControl();
-                // Show the default grid
-                ShowDefaultContainerGrid();
+
+                // Show default panel if not already visible
+                if (_defaultContainerGrid.Visibility != Visibility.Visible)
+                {
+                    _showDefaultPanel.Begin();
+                }
             }
         }
 
@@ -185,16 +204,24 @@ namespace HWC_ProximityWindowsApp
                             || notificationToShow.ContentMimeType == MimeType.ImageJpeg
                             || notificationToShow.ContentMimeType == MimeType.ImageJpg)
                         {
-                            // Create & start the Notification timeout timer with interval set to current Notification's timeout duration
-                            _notificationTimeoutTimer = new DispatcherTimer();
+                            // Start the Notification timeout timer with interval set to current Notification's timeout duration
                             _notificationTimeoutTimer.Interval = TimeSpan.FromMilliseconds(notificationToShow.Timeout * 1000); // Value (in second) multiplied with 1000 to convert it into milliseconds
-                            _notificationTimeoutTimer.Tick += NotificationTimeoutTimer_Tick;
                             _notificationTimeoutTimer.Start();  // Start Notification timeout timer
 
                             // Assign the Notification image to it's UI image control
                             string remoteImageHttpLink = notificationToShow.ContentBody;
                             _notificationImageEx.Source = BitmapImageProvider.GetImageFromRemoteSource(remoteImageHttpLink);
-                            _notificationImageEx.Tag = notificationToShow.NotificationID;
+                            _notificationContainerGrid.Tag = notificationToShow.NotificationID;
+                            Log.DebugLog(">>>Show NotificationID: " + notificationToShow.NotificationID);
+
+                            // Show Notification panel
+                            _hideDefaultPanel.Begin();
+                            _showNotificationPanel.Begin();
+                            // Show press-now panel if there are any Coupon associated with the Notification
+                            if (_receivedNotifications[notificationToShow.NotificationID]?.Coupons?.Any() ?? false)
+                            {
+                                _showNotificationPressNowPanel.Begin();
+                            }
                         }
                     }
                 }
@@ -208,15 +235,10 @@ namespace HWC_ProximityWindowsApp
         // Notification timeout timer ticked event
         private void NotificationTimeoutTimer_Tick(object sender, object e)
         {
-            // Obsolete timer; clear it.
-            var thisTimer = (DispatcherTimer)sender;
-            thisTimer.Stop();
-            thisTimer = null;
-
-            if (!_isUserEventConfirmationShowing)
-            {
-                LoadOrUnloadNotification(); // Recursive invoke
-            }
+            // Stop the timer
+            _notificationTimeoutTimer.Stop();
+            
+            LoadOrUnloadNotification(); // Recursive invoke
         }
 
         // Push user event to cloud
@@ -227,17 +249,17 @@ namespace HWC_ProximityWindowsApp
             {
                 _bufferedNotification = null;               // Clear the buffered Notification
                 _isUserEventConfirmationShowing = true;     // Set to true
+                _notificationTimeoutTimer.Stop();           // Stop Notification timeout timer
                 _notificationPullTimer.Stop();              // Stop Notification pull timer
-                NotificationTimeoutTimer_Tick(_notificationTimeoutTimer, null); // Make a manual tick for Notification timeout timer
 
                 try
                 {
                     // Prepare content for REST request
-                    _eventRestClient.RequestContent = "{\"Type\": \"DisplayEndpoint_Touch\"," + 
-                                                        "\"EventAtTimestamp\": \"" + DateTime.UtcNow.ToString() + "\"," +
-                                                        "\"SourceType\": \"Notification\"," +
-                                                        "\"SourceID\": " + notificationID + "," +
-                                                        "\"Message\": \"NotificationID " + notificationID + " touched on a DisplayEndpointID" + _displayEndpointID + "\"}";
+                    _eventRestClient.UpdateContent("{\"Type\": \"DisplayEndpoint_Touch\"," + 
+                                                    "\"EventAtTimestamp\": \"" + DateTime.UtcNow.ToString() + "\"," +
+                                                    "\"SourceType\": \"Notification\"," +
+                                                    "\"SourceID\": " + notificationID + "," +
+                                                    "\"Message\": \"NotificationID " + notificationID + " touched on a DisplayEndpointID" + _displayEndpointID + "\"}");
                 
                     // Make REST call to push user event
                     string responseValue = await _eventRestClient.MakeRequestAsync();
@@ -246,13 +268,18 @@ namespace HWC_ProximityWindowsApp
                     Log.DebugLog(log);
                     Log.LogAsync(Log.LoggingLevel.Information, log);
 
-                    ShowUserEventConfirmation();            // Show user event confirmation
-                    CleanUpNotificationControl();           // Clean-up Notification's UI control
+                    // Show user-event confirmation panel
+                    _hideNotificationPanel.Begin();
+                    _showUserEventConfirmationPanel.Begin();
+
+                    // Clean-up Notification's UI control
+                    CleanUpNotificationControl();
 
                     // Delay the thread with specified duration for keep showing user event confirmation
                     await Task.Delay(Constants.UserEventConfirmationDurationInMs);
 
-                    HideUserEventConfirmation();            // Hide user event confirmation
+                    // Hide user-event confirmation panel
+                    _hideUserEventConfirmationPanel.Begin();
                 }
                 catch (Exception ex)
                 {
@@ -393,71 +420,53 @@ namespace HWC_ProximityWindowsApp
         private void CleanUpNotificationControl()
         {
             _notificationImageEx.Source = null;
-            _notificationImageEx.Tag = null;
+            _notificationContainerGrid.Tag = null;
         }
-
-        private void ShowDefaultContainerGrid()
+        
+        private void NotificationContainerGrid_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
-            if (_defaultContainerGrid.Visibility != Visibility.Visible)
-            {
-                _defaultContainerGrid.Visibility = Visibility.Visible;
-                _showDefaultContainerGrid.Begin();
+            try
+            { 
+                _notificationPointerDownEffect.Begin();
             }
-        }
-
-        private void HideDefaultContainerGrid()
-        {
-            _defaultContainerGrid.Visibility = Visibility.Collapsed;
-        }
-
-        private void ShowUserEventConfirmation()
-        {
-            _notificationContainerGrid.Visibility = Visibility.Collapsed;
-            _userEventConfirmationContainerGrid.Visibility = Visibility.Visible;
-            _showUserEventConfirmation.Begin();
-        }
-
-        private void HideUserEventConfirmation()
-        {
-            _hideUserEventConfirmation.Begin();
-            _notificationContainerGrid.Visibility = Visibility.Visible;
-        }
-        
-        private void NotificationImageEx_ImageExOpened(object sender, ImageExOpenedEventArgs e)
-        {
-            HideDefaultContainerGrid();
-        }
-        
-        private void NotificationImageEx_PointerPressed(object sender, PointerRoutedEventArgs e)
-        {
-            _pointerDownNotificationImageEx.Begin();
+            catch (Exception ex)
+            {
+                string log = "Notification panel pointer-press event error. EXCEPTION: " + ex.Message;
+                Log.DebugLog(log);
+                Log.LogAsync(Log.LoggingLevel.Error, log);
+            }
 
             if (!_isUserEventConfirmationShowing)
             {
                 try
                 {
-                    long notificationID = (long)((ImageEx)sender).Tag; // Get the NotificationID from Notification's UI image control
-                    PushUserEventAsync(notificationID, EventType.DisplayEndpoint_Touch);
+                    long notificationID = (long)((Grid)sender).Tag; // Get the NotificationID from Notification's UI panel control
+                    if (_receivedNotifications[notificationID]?.Coupons?.Any() ?? false)
+                    {
+                        PushUserEventAsync(notificationID, EventType.DisplayEndpoint_Touch);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    string log = "Invalid NotificationID at image tap event. EXCEPTION: " + ex.Message;
+                    string log = "Invalid NotificationID at Notification panel pointer-press event. EXCEPTION: " + ex.Message;
                     Log.DebugLog(log);
                     Log.LogAsync(Log.LoggingLevel.Error, log);
                 }
             }
         }
 
-        private void NotificationImageEx_PointerReleased(object sender, PointerRoutedEventArgs e)
+        private void NotificationContainerGrid_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
             try
             {
-                _pointerDownNotificationImageEx.Stop();
-                _pointerUpNotificationImageEx.Begin();
+                _notificationPointerDownEffect.Stop();
+                _notificationPointerUpEffect.Begin();
             }
             catch (Exception ex)
             {
-                Log.LogAsync(Log.LoggingLevel.Error, "Notification image tap event release error. EXCEPTION: " + ex.Message);
+                string log = "Notification panel pointer-release event error. EXCEPTION: " + ex.Message;
+                Log.DebugLog(log);
+                Log.LogAsync(Log.LoggingLevel.Error, log);
             }
         }
 
