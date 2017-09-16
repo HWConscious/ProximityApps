@@ -16,26 +16,72 @@
         </Grid.Transitions>
 
         <Grid.Resources>
-            <Storyboard x:Name="_showDefaultContainerGrid">
+            
+            <Storyboard x:Name="_showDefaultPanel">
+                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_defaultContainerGrid" Storyboard.TargetProperty="Visibility">
+                    <DiscreteObjectKeyFrame KeyTime="0" Value="Visible"/>
+                </ObjectAnimationUsingKeyFrames>
                 <FadeInThemeAnimation Storyboard.TargetName="_defaultContainerGrid" SpeedRatio="1"/>
                 <RepositionThemeAnimation Storyboard.TargetName="_defaultContainerGrid" SpeedRatio="0.2" FromHorizontalOffset="200"/>
             </Storyboard>
-            <Storyboard x:Name="_pointerDownNotificationImageEx">
-                <PointerDownThemeAnimation Storyboard.TargetName="_notificationContainerGrid"/>
+            <Storyboard x:Name="_hideDefaultPanel">
+                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_defaultContainerGrid" Storyboard.TargetProperty="Visibility">
+                    <DiscreteObjectKeyFrame KeyTime="0" Value="Collapsed"/>
+                </ObjectAnimationUsingKeyFrames>
             </Storyboard>
-            <Storyboard x:Name="_pointerUpNotificationImageEx">
-                <PointerUpThemeAnimation Storyboard.TargetName="_notificationContainerGrid"/>
+
+            <Storyboard x:Name="_showNotificationPanel">
+                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_notificationContainerGrid" Storyboard.TargetProperty="Visibility">
+                    <DiscreteObjectKeyFrame KeyTime="0" Value="Visible"/>
+                </ObjectAnimationUsingKeyFrames>
             </Storyboard>
-            <Storyboard x:Name="_showUserEventConfirmation">
+            <Storyboard x:Name="_hideNotificationPanel">
+                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_notificationContainerGrid" Storyboard.TargetProperty="Visibility">
+                    <DiscreteObjectKeyFrame KeyTime="0" Value="Collapsed"/>
+                </ObjectAnimationUsingKeyFrames>
+            </Storyboard>
+
+            <Storyboard x:Name="_showNotificationPressNowPanel">
+                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_notificationPressNowGrid" Storyboard.TargetProperty="Visibility">
+                    <DiscreteObjectKeyFrame KeyTime="0" Value="Visible"/>
+                </ObjectAnimationUsingKeyFrames>
+                <FadeInThemeAnimation Storyboard.TargetName="_notificationPressNowGrid" SpeedRatio="0.1"/>
+                <RepositionThemeAnimation Storyboard.TargetName="_notificationPressNowGrid" SpeedRatio="0.2" FromVerticalOffset="25"/>
+                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_userEventConfirmationContainerGrid" Storyboard.TargetProperty="Visibility">
+                    <DiscreteObjectKeyFrame KeyTime="0" Value="Visible"/>
+                </ObjectAnimationUsingKeyFrames>
+                <FadeOutThemeAnimation Storyboard.TargetName="_userEventConfirmationContainerGrid" Duration="0:0:0.5"/>
+            </Storyboard>
+            <Storyboard x:Name="_hideNotificationPressNowPanel">
+                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_notificationPressNowGrid" Storyboard.TargetProperty="Visibility">
+                    <DiscreteObjectKeyFrame KeyTime="0" Value="Collapsed"/>
+                </ObjectAnimationUsingKeyFrames>
+            </Storyboard>
+
+            <Storyboard x:Name="_showUserEventConfirmationPanel">
+                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_userEventConfirmationContainerGrid" Storyboard.TargetProperty="Visibility">
+                    <DiscreteObjectKeyFrame KeyTime="0" Value="Visible"/>
+                </ObjectAnimationUsingKeyFrames>
                 <FadeInThemeAnimation Storyboard.TargetName="_userEventConfirmationContainerGrid" SpeedRatio="0.4"/>
                 <RepositionThemeAnimation Storyboard.TargetName="_userEventConfirmationContainerGrid" SpeedRatio="0.2" FromHorizontalOffset="40"/>
             </Storyboard>
-            <Storyboard x:Name="_hideUserEventConfirmation">
+            <Storyboard x:Name="_hideUserEventConfirmationPanel">
+                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_userEventConfirmationContainerGrid" Storyboard.TargetProperty="Visibility">
+                    <DiscreteObjectKeyFrame KeyTime="5" Value="Collapsed"/>
+                </ObjectAnimationUsingKeyFrames>
                 <FadeOutThemeAnimation Storyboard.TargetName="_userEventConfirmationContainerGrid" SpeedRatio="0.2"/>
             </Storyboard>
+
+            <Storyboard x:Name="_notificationPointerDownEffect">
+                <PointerDownThemeAnimation Storyboard.TargetName="_notificationContainerGrid"/>
+            </Storyboard>
+            <Storyboard x:Name="_notificationPointerUpEffect">
+                <PointerUpThemeAnimation Storyboard.TargetName="_notificationContainerGrid"/>
+            </Storyboard>
+            
         </Grid.Resources>
 
-        <Grid x:Name="_userEventConfirmationContainerGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Visibility="Visible">
+        <Grid x:Name="_userEventConfirmationContainerGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Visibility="Collapsed">
             <controls:ImageEx x:Name="_userEventConfirmationImageEx"
                 IsCacheEnabled="True"
                 Source="/ProximityApp/MediaFiles/Image_ThankYou.jpg"
@@ -48,7 +94,7 @@
                 Height="363"/>
         </Grid>
 
-        <Grid x:Name="_notificationContainerGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Visibility="Visible">
+        <Grid x:Name="_notificationContainerGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Visibility="Collapsed" PointerPressed="NotificationContainerGrid_PointerPressed" PointerReleased="NotificationContainerGrid_PointerReleased">
             <controls:ImageEx x:Name="_notificationImageEx"
                 IsCacheEnabled="True"
                 Source="{Binding Thumbnail}"
@@ -56,13 +102,23 @@
                 PlaceholderSource="/Assets/ImageExPlaceholder.jpg"
                 PlaceholderStretch="UniformToFill"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                ImageExOpened="NotificationImageEx_ImageExOpened"
-                PointerPressed="NotificationImageEx_PointerPressed"
-                PointerReleased="NotificationImageEx_PointerReleased"/>
+                VerticalAlignment="Center"/>
+            <Grid x:Name="_notificationPressNowGrid" Margin="30, 0, 30, 30" VerticalAlignment="Bottom" Height="150" Visibility="Collapsed">
+                <Grid x:Name="_notificationPressNowGrid1" Opacity="0.6" Background="{StaticResource Black}"></Grid>
+                <Grid x:Name="_notificationPressNowGrid2" Margin="2" BorderThickness="2" BorderBrush="#FFCC00">
+                    <TextBlock Text="PRESS NOW TO GET" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="100" FontWeight="Thin" FontStretch="UltraExpanded" FontFamily="Century Gothic" Foreground="White" />
+                </Grid>
+            </Grid>
         </Grid>
 
-
+        <Grid x:Name="_defaultContainerGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Visibility="Collapsed">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <!-- HWConscious logo -->
+                <Image x:Name="_hwcLogoBottomImage" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0" Stretch="None" Visibility="Visible" Source="ms-appx:///ProximityApp/MediaFiles/Logo_Hwc_Medium.png"/>
+                <ProgressRing x:Name="_progressRing" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,20,0,0" Height="40" Width="40" IsActive="True" Foreground="{StaticResource PrimaryColor}" />
+            </StackPanel>
+        </Grid>
+        
         <ContentDialog x:Name="_saveEnergyContentDialog" PrimaryButtonText="Open battery saver settings" SecondaryButtonText="Ignore" Title="Battery saver is on." VerticalAlignment="Center">
             <StackPanel>
                 <TextBlock TextWrapping="WrapWholeWords">
@@ -84,12 +140,5 @@
             </StackPanel>
         </ContentDialog>
 
-        <Grid x:Name="_defaultContainerGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Visibility="Visible">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <!-- HWConscious logo -->
-                <Image x:Name="_hwcLogoBottomImage" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0" Stretch="None" Visibility="Visible" Source="ms-appx:///ProximityApp/MediaFiles/Logo_Hwc_Medium.png"/>
-                <ProgressRing x:Name="_progressRing" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,20,0,0" Height="40" Width="40" IsActive="True" Foreground="{StaticResource PrimaryColor}" />
-            </StackPanel>
-        </Grid>
     </Grid>
 </Page>
