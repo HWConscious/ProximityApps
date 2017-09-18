@@ -164,8 +164,8 @@ namespace HWC_ProximityWindowsApp
         // Load or unload the buffered Notification
         private void LoadOrUnloadNotification()
         {
-            // Hide press-now panel
-            _hideNotificationPressNowPanel.Begin();
+            // Hide notification-press panel
+            _hideNotificationPressPanel.Begin();
 
             if (_bufferedNotification != null)
             {
@@ -217,10 +217,10 @@ namespace HWC_ProximityWindowsApp
                             // Show Notification panel
                             _hideDefaultPanel.Begin();
                             _showNotificationPanel.Begin();
-                            // Show press-now panel if there are any Coupon associated with the Notification
-                            if (_receivedNotifications[notificationToShow.NotificationID]?.Coupons?.Any() ?? false)
+                            // Show notification-press panel if there are any Coupon associated with the Notification
+                            if (notificationToShow.Coupons?.Any() ?? false)
                             {
-                                _showNotificationPressNowPanel.Begin();
+                                _showNotificationPressPanel.Begin();
                             }
                         }
                     }

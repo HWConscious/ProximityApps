@@ -41,19 +41,19 @@
                 </ObjectAnimationUsingKeyFrames>
             </Storyboard>
 
-            <Storyboard x:Name="_showNotificationPressNowPanel">
-                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_notificationPressNowGrid" Storyboard.TargetProperty="Visibility">
+            <Storyboard x:Name="_showNotificationPressPanel">
+                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_notificationPressGrid" Storyboard.TargetProperty="Visibility">
                     <DiscreteObjectKeyFrame KeyTime="0" Value="Visible"/>
                 </ObjectAnimationUsingKeyFrames>
-                <FadeInThemeAnimation Storyboard.TargetName="_notificationPressNowGrid" SpeedRatio="0.1"/>
-                <RepositionThemeAnimation Storyboard.TargetName="_notificationPressNowGrid" SpeedRatio="0.2" FromVerticalOffset="25"/>
+                <FadeInThemeAnimation Storyboard.TargetName="_notificationPressGrid" SpeedRatio="0.1"/>
+                <RepositionThemeAnimation Storyboard.TargetName="_notificationPressGrid" SpeedRatio="0.2" FromVerticalOffset="25"/>
                 <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_userEventConfirmationContainerGrid" Storyboard.TargetProperty="Visibility">
                     <DiscreteObjectKeyFrame KeyTime="0" Value="Visible"/>
                 </ObjectAnimationUsingKeyFrames>
                 <FadeOutThemeAnimation Storyboard.TargetName="_userEventConfirmationContainerGrid" Duration="0:0:0.5"/>
             </Storyboard>
-            <Storyboard x:Name="_hideNotificationPressNowPanel">
-                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_notificationPressNowGrid" Storyboard.TargetProperty="Visibility">
+            <Storyboard x:Name="_hideNotificationPressPanel">
+                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_notificationPressGrid" Storyboard.TargetProperty="Visibility">
                     <DiscreteObjectKeyFrame KeyTime="0" Value="Collapsed"/>
                 </ObjectAnimationUsingKeyFrames>
             </Storyboard>
@@ -103,10 +103,12 @@
                 PlaceholderStretch="UniformToFill"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"/>
-            <Grid x:Name="_notificationPressNowGrid" Margin="30, 0, 30, 30" VerticalAlignment="Bottom" Height="150" Visibility="Collapsed">
-                <Grid x:Name="_notificationPressNowGrid1" Opacity="0.6" Background="{StaticResource Black}"></Grid>
-                <Grid x:Name="_notificationPressNowGrid2" Margin="2" BorderThickness="2" BorderBrush="#FFCC00">
-                    <TextBlock Text="PRESS NOW TO GET" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="100" FontWeight="Thin" FontStretch="UltraExpanded" FontFamily="Century Gothic" Foreground="White" />
+            <Grid x:Name="_notificationPressGrid" Margin="30, 0, 30, 30" VerticalAlignment="Bottom" Height="150" Visibility="Collapsed">
+                <Grid Opacity="0.6" Background="{StaticResource Black}"></Grid>
+                <Grid Margin="2" BorderThickness="2" BorderBrush="#FFCC00">
+                    <Viewbox>
+                        <TextBlock Text="PRESS TO GET COUPON" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="100" FontWeight="Thin" FontStretch="UltraExpanded" FontFamily="Century Gothic" Foreground="White" />
+                    </Viewbox>
                 </Grid>
             </Grid>
         </Grid>
