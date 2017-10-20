@@ -8,10 +8,10 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Navigation;
+using Windows.Storage;
 using Windows.System;
 using Windows.System.Power;
 using Microsoft.Toolkit.Uwp;
-using Microsoft.Toolkit.Uwp.UI.Controls;
 
 using HWC_ProximityWindowsApp.ProximityApp.Models;
 
@@ -59,6 +59,14 @@ namespace HWC_ProximityWindowsApp
                 _notificationTimeoutTimer = new DispatcherTimer();
                 _notificationTimeoutTimer.Tick += NotificationTimeoutTimer_Tick;
 
+                // Set Notification video player's default configurations
+                _notificationVideoPlayer.IsLooping = true;
+                _notificationVideoPlayer.RealTimePlayback = true;
+                _notificationVideoPlayer.MediaOpened += NotificationVideoPlayer_MediaOpened;
+
+                // Cleanup expired video cache files
+                await VideoCache.Instance.RemoveExpiredAsync();
+
                 // Initialize REST client
                 RestClientInitialize();
 
@@ -73,7 +81,7 @@ namespace HWC_ProximityWindowsApp
                 Application.Current.Exit();
             }
         }
-        
+
         // Initialize client for REST calls
         private void RestClientInitialize()
         {
@@ -133,7 +141,7 @@ namespace HWC_ProximityWindowsApp
                 // Make REST call to pull Notification
                 string responseValue = await _notificationRestClient.MakeRequestAsync();
                 Log.DebugLog("Notification pull response: " + responseValue);
-
+                
                 // Deserialize the response value as Notification
                 var receivedNotification = JsonConvert.DeserializeObject<Notification>(responseValue);
                 if (receivedNotification != null)
@@ -173,7 +181,7 @@ namespace HWC_ProximityWindowsApp
                 // Clone the buffered Notification into an another object
                 Notification notificationToShow = JsonConvert.DeserializeObject<Notification>(JsonConvert.SerializeObject(_bufferedNotification));
                 // Show the Notification
-                ShowNotification(notificationToShow);
+                ShowNotificationAsync(notificationToShow);
             }
             else 
             {
@@ -190,7 +198,7 @@ namespace HWC_ProximityWindowsApp
         }
 
         // Show the Notification
-        private void ShowNotification(Notification notificationToShow)
+        private async void ShowNotificationAsync(Notification notificationToShow)
         {
             try
             {
@@ -202,26 +210,42 @@ namespace HWC_ProximityWindowsApp
                         // Validate the Notification content type
                         if (notificationToShow.ContentMimeType == MimeType.ImagePng
                             || notificationToShow.ContentMimeType == MimeType.ImageJpeg
-                            || notificationToShow.ContentMimeType == MimeType.ImageJpg)
+                            || notificationToShow.ContentMimeType == MimeType.ImageJpg
+                            || notificationToShow.ContentMimeType == MimeType.VideoMp4)
                         {
                             // Start the Notification timeout timer with interval set to current Notification's timeout duration
                             _notificationTimeoutTimer.Interval = TimeSpan.FromMilliseconds(notificationToShow.Timeout * 1000); // Value (in second) multiplied with 1000 to convert it into milliseconds
                             _notificationTimeoutTimer.Start();  // Start Notification timeout timer
 
-                            // Assign the Notification image to it's UI image control
-                            string remoteImageHttpLink = notificationToShow.ContentBody;
-                            _notificationImageEx.Source = BitmapImageProvider.GetImageFromRemoteSource(remoteImageHttpLink);
+                            _hideVideoNotification.Begin();
+
+                            switch (notificationToShow.ContentMimeType)
+                            {
+                                case MimeType.ImagePng:
+                                case MimeType.ImageJpeg:
+                                case MimeType.ImageJpg:
+                                    // Assign the Notification image content to it's UI image control
+                                    _notificationImageEx.Source = BitmapImageProvider.GetImageFromRemoteSource(notificationToShow.ContentBody);
+                                    Log.DebugLog(">>>Show NotificationID (image content): " + notificationToShow.NotificationID);
+                                    break;
+
+                                case MimeType.VideoMp4:
+                                    var videoUri = new Uri(notificationToShow.ContentBody);
+                                    // Assign the Notification video content to it's UI video control
+                                    _notificationVideoPlayer.SetPlaybackSource(await VideoCache.Instance.GetFromCacheAsync(videoUri));
+                                    Log.DebugLog(">>>Show NotificationID (video content): " + notificationToShow.NotificationID);
+                                    // Set video player's dimension for the video content
+                                    SetVideoPlayerDimensionAsync(videoUri);
+                                    break;
+                            }
+
                             _notificationContainerGrid.Tag = notificationToShow.NotificationID;
-                            Log.DebugLog(">>>Show NotificationID: " + notificationToShow.NotificationID);
 
                             // Show Notification panel
                             _hideDefaultPanel.Begin();
                             _showNotificationPanel.Begin();
                             // Show notification-press panel if there are any Coupon associated with the Notification
-                            if (notificationToShow.Coupons?.Any() ?? false)
-                            {
-                                _showNotificationPressPanel.Begin();
-                            }
+                            if (notificationToShow.Coupons?.Any() ?? false) { _showNotificationPressPanel.Begin(); }
                         }
                     }
                 }
@@ -237,8 +261,12 @@ namespace HWC_ProximityWindowsApp
         {
             // Stop the timer
             _notificationTimeoutTimer.Stop();
-            
-            LoadOrUnloadNotification(); // Recursive invoke
+
+            // Clean-up Notification's UI control
+            CleanUpNotificationControl();
+
+            // Recursive invoke
+            LoadOrUnloadNotification();
         }
 
         // Push user event to cloud
@@ -420,9 +448,34 @@ namespace HWC_ProximityWindowsApp
         private void CleanUpNotificationControl()
         {
             _notificationImageEx.Source = null;
+            _notificationVideoPlayer.Source = null;
             _notificationContainerGrid.Tag = null;
         }
-        
+
+        private async void SetVideoPlayerDimensionAsync(Uri videoUri)
+        {
+            if (videoUri != null)
+            {
+                try
+                {
+                    var cacheFile = await VideoCache.Instance.GetFileFromCacheAsync(videoUri);
+                    var tempFile = await cacheFile.CopyAsync(ApplicationData.Current.TemporaryFolder, cacheFile.Name + ".mp4", NameCollisionOption.ReplaceExisting);
+                    
+                    var properties = await tempFile.Properties.RetrievePropertiesAsync(new List<string>() { "System.Video.FrameWidth", "System.Video.FrameHeight" });
+                    _notificationVideoPlayer.Width = (uint)properties["System.Video.FrameWidth"];
+                    _notificationVideoPlayer.Height = (uint)properties["System.Video.FrameHeight"];
+                    (_notificationVideoPlayer.Parent as Viewbox).MaxWidth = _notificationVideoPlayer.Width;
+                    (_notificationVideoPlayer.Parent as Viewbox).MaxHeight = _notificationVideoPlayer.Height;
+
+                    await tempFile.DeleteAsync();
+                }
+                catch (Exception ex)
+                {
+                    Log.LogAsync(Log.LoggingLevel.Error, "Unable to set dimension for video player. URI: " + videoUri.ToString() + " EXCEPTION: " + ex.Message);
+                }
+            }
+        }
+
         private void NotificationContainerGrid_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
             try
@@ -468,6 +521,12 @@ namespace HWC_ProximityWindowsApp
                 Log.DebugLog(log);
                 Log.LogAsync(Log.LoggingLevel.Error, log);
             }
+        }
+        
+        private void NotificationVideoPlayer_MediaOpened(object sender, RoutedEventArgs e)
+        {
+            _showVideoNotification.Stop();
+            _showVideoNotification.Begin();
         }
 
         private void Window_VisibilityChanged(object sender, VisibilityChangedEventArgs e)

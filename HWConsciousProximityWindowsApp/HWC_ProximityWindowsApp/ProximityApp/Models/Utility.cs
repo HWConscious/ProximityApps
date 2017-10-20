@@ -131,7 +131,8 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
         None = 0,
         ImagePng = 1,
         ImageJpeg = 2,
-        ImageJpg = 3
+        ImageJpg = 3,
+        VideoMp4 = 4
     }
 
     /// <summary>

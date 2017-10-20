@@ -102,6 +102,7 @@
     <Compile Include="ProximityApp\Models\PushNotificationInterface.cs" />
     <Compile Include="ProximityApp\Models\RestClient.cs" />
     <Compile Include="ProximityApp\Models\Utility.cs" />
+    <Compile Include="ProximityApp\Models\VideoCache.cs" />
     <Compile Include="Views\MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>

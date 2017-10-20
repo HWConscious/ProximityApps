@@ -41,6 +41,19 @@
                 </ObjectAnimationUsingKeyFrames>
             </Storyboard>
 
+            <Storyboard x:Name="_showVideoNotification">
+                <DoubleAnimation Storyboard.TargetName="_notificationVideoPlayer" Storyboard.TargetProperty="Opacity" From="0.0" To="1.0" Duration="0:0:1">
+                    <DoubleAnimation.EasingFunction>
+                        <SineEase EasingMode="EaseOut"/>
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+            </Storyboard>
+            <Storyboard x:Name="_hideVideoNotification">
+                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_notificationVideoPlayer" Storyboard.TargetProperty="Opacity">
+                    <DiscreteObjectKeyFrame KeyTime="0" Value="0.0"/>
+                </ObjectAnimationUsingKeyFrames>
+            </Storyboard>
+
             <Storyboard x:Name="_showNotificationPressPanel">
                 <ObjectAnimationUsingKeyFrames Storyboard.TargetName="_notificationPressGrid" Storyboard.TargetProperty="Visibility">
                     <DiscreteObjectKeyFrame KeyTime="0" Value="Visible"/>
@@ -103,6 +116,13 @@
                 PlaceholderStretch="UniformToFill"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"/>
+            <Viewbox>
+                <MediaElement x:Name="_notificationVideoPlayer" 
+                    Width="1920"
+                    Height="1080"
+                    Stretch="Uniform"
+                    AutoPlay="True"/>
+            </Viewbox>
             <Grid x:Name="_notificationPressGrid" Margin="30, 0, 30, 30" VerticalAlignment="Bottom" Height="150" Visibility="Collapsed">
                 <Grid Opacity="0.6" Background="{StaticResource Black}"></Grid>
                 <Grid Margin="2" BorderThickness="2" BorderBrush="#FFCC00">
