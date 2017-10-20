@@ -20,6 +20,7 @@
         // Miscellaneous constants
         public const int NotificationPullFrequencyInMs = 2000;
         public const int UserEventConfirmationDurationInMs = 5000;
+        public const int VideoNotificationCacheDurationInDays = 15;
     }
 
     #endregion
