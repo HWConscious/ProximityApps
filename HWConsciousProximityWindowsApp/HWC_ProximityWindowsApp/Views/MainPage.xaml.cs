@@ -122,7 +122,7 @@ namespace HWC_ProximityWindowsApp
             _notificationPullTimer.Start();         // Start Notification pull timer
             NotificationPullTimer_Tick(null, null); // Make a manual tick for Notification pull timer
         }
-
+        
         #endregion
 
         #region Private methods
@@ -217,7 +217,8 @@ namespace HWC_ProximityWindowsApp
                             _notificationTimeoutTimer.Interval = TimeSpan.FromMilliseconds(notificationToShow.Timeout * 1000); // Value (in second) multiplied with 1000 to convert it into milliseconds
                             _notificationTimeoutTimer.Start();  // Start Notification timeout timer
 
-                            _hideVideoNotification.Begin();
+                            // Clean-up Notification's UI control
+                            CleanUpNotificationControl();
 
                             switch (notificationToShow.ContentMimeType)
                             {
@@ -450,6 +451,7 @@ namespace HWC_ProximityWindowsApp
             _notificationImageEx.Source = null;
             _notificationVideoPlayer.Source = null;
             _notificationContainerGrid.Tag = null;
+            _hideVideoNotification.Begin();
         }
 
         private async void SetVideoPlayerDimensionAsync(Uri videoUri)
