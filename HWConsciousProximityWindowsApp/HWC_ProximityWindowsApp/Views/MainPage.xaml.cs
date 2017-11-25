@@ -30,6 +30,7 @@ namespace HWC_ProximityWindowsApp
         private RestClient _eventRestClient { get; set; }
         private Notification _bufferedNotification { get; set; }
         private Dictionary<long, Notification> _receivedNotifications { get; set; }
+        private bool _isNotificationShowing = false;
         private bool _isUserEventConfirmationShowing = false;
 
         #endregion
@@ -96,7 +97,7 @@ namespace HWC_ProximityWindowsApp
                     requestHeaders,
                     null,
                     null,
-                    1000);  // 1 second timeout
+                    1500);  // 1.5 seconds timeout
 
                 // Create the REST client for pushing Events
                 _eventRestClient = new RestClient(
@@ -172,9 +173,6 @@ namespace HWC_ProximityWindowsApp
         // Load or unload the buffered Notification
         private void LoadOrUnloadNotification()
         {
-            // Hide notification-press panel
-            _hideNotificationPressPanel.Begin();
-
             if (_bufferedNotification != null)
             {
                 // There is a Notification to show
@@ -183,7 +181,7 @@ namespace HWC_ProximityWindowsApp
                 // Show the Notification
                 ShowNotificationAsync(notificationToShow);
             }
-            else 
+            else if (!_isNotificationShowing)
             {
                 // There isn't any Notification to show
                 // Clean-up Notification's UI control
@@ -202,7 +200,7 @@ namespace HWC_ProximityWindowsApp
         {
             try
             {
-                if (!_isUserEventConfirmationShowing)
+                if (!_isNotificationShowing && !_isUserEventConfirmationShowing)
                 {
                     // Validate the Notification content
                     if (notificationToShow != null && notificationToShow.Timeout > 0 && !string.IsNullOrEmpty(notificationToShow.ContentBody))
@@ -213,8 +211,15 @@ namespace HWC_ProximityWindowsApp
                             || notificationToShow.ContentMimeType == MimeType.ImageJpg
                             || notificationToShow.ContentMimeType == MimeType.VideoMp4)
                         {
-                            // Start the Notification timeout timer with interval set to current Notification's timeout duration
-                            _notificationTimeoutTimer.Interval = TimeSpan.FromMilliseconds(notificationToShow.Timeout * 1000); // Value (in second) multiplied with 1000 to convert it into milliseconds
+                            _isNotificationShowing = true;      // Set to true
+
+                            // Reset Notification progress bar
+                            _notificationProgressBar.Value = 0;
+                            _notificationProgressBar.Visibility = notificationToShow.ShowProgressBar ? Visibility.Visible : Visibility.Collapsed;
+                            _notificationProgressBar.Maximum = notificationToShow.Timeout;  // Current Notification's timeout duration
+
+                            // Start the Notification timeout timer with interval of 1 second
+                            _notificationTimeoutTimer.Interval = TimeSpan.FromSeconds(1);
                             _notificationTimeoutTimer.Start();  // Start Notification timeout timer
 
                             // Clean-up Notification's UI control
@@ -260,14 +265,18 @@ namespace HWC_ProximityWindowsApp
         // Notification timeout timer ticked event
         private void NotificationTimeoutTimer_Tick(object sender, object e)
         {
-            // Stop the timer
-            _notificationTimeoutTimer.Stop();
+            _notificationProgressBar.Value += 1;
+            if (_notificationProgressBar.Value >= _notificationProgressBar.Maximum)
+            {
+                _notificationProgressBar.Visibility = Visibility.Collapsed;
 
-            // Clean-up Notification's UI control
-            CleanUpNotificationControl();
+                // Stop the timer
+                _notificationTimeoutTimer.Stop();
+                _isNotificationShowing = false;     // Set to false
 
-            // Recursive invoke
-            LoadOrUnloadNotification();
+                // Recursive invoke
+                LoadOrUnloadNotification();
+            }
         }
 
         // Push user event to cloud
@@ -276,6 +285,7 @@ namespace HWC_ProximityWindowsApp
             // Validate the NotificationID and event type as 'DisplayEndpoint_Touch'
             if (notificationID > 0 && eventType == EventType.DisplayEndpoint_Touch)
             {
+                _isNotificationShowing = false;             // Set to false
                 _bufferedNotification = null;               // Clear the buffered Notification
                 _isUserEventConfirmationShowing = true;     // Set to true
                 _notificationTimeoutTimer.Stop();           // Stop Notification timeout timer
@@ -451,6 +461,7 @@ namespace HWC_ProximityWindowsApp
             _notificationImageEx.Source = null;
             _notificationVideoPlayer.Source = null;
             _notificationContainerGrid.Tag = null;
+            _hideNotificationPressPanel.Begin();
             _hideVideoNotification.Begin();
         }
 

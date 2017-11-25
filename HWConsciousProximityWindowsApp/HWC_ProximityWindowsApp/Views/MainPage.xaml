@@ -131,6 +131,7 @@
                     </Viewbox>
                 </Grid>
             </Grid>
+            <ProgressBar x:Name="_notificationProgressBar" Margin="0, 0, 0, 3" Height="5" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" IsIndeterminate="False" Foreground="{StaticResource PrimaryColor}" Visibility="Collapsed" />
         </Grid>
 
         <Grid x:Name="_defaultContainerGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Visibility="Collapsed">

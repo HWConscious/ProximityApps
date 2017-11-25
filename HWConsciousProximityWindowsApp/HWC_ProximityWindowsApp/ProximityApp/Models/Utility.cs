@@ -144,9 +144,10 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
         public long ClientSpotID { get; set; }
         public long DisplayEndpointID { get; set; }
         public string Name { get; set; }
-        public int SortOrder { get; set; }
+        public int? SortOrder { get; set; }
         public int Timeout { get; set; }
         public bool Active { get; set; }
+        public bool ShowProgressBar { get; set; }
         public MimeType ContentMimeType { get; set; }
         public string ContentSubject { get; set; }
         public string ContentCaption { get; set; }
