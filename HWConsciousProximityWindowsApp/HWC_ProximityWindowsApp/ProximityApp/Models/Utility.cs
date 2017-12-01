@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Windows.UI.Popups;
-using Windows.UI.Xaml.Media.Imaging;
+using Windows.Networking.Connectivity;
 using Windows.Storage;
 using Windows.Storage.Streams;
+using Windows.UI.Popups;
+using Windows.UI.Xaml.Media.Imaging;
 
 namespace HWC_ProximityWindowsApp.ProximityApp.Models
 {
@@ -36,6 +37,29 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
             {
                 throw new Exception("Error in showing MessageBox. " + ex.Message);
             }
+        }
+
+        /// <summary>
+        /// Gets internet availibility for the system.
+        /// </summary>
+        /// <returns></returns>
+        public static bool IsInternetAvailable()
+        {
+            bool isInternetAvailable = false;
+            
+            var connectivityLevel = NetworkInformation.GetInternetConnectionProfile()?.GetNetworkConnectivityLevel();
+            switch (connectivityLevel)
+            {
+                case NetworkConnectivityLevel.InternetAccess:
+                case NetworkConnectivityLevel.ConstrainedInternetAccess:
+                    isInternetAvailable = true;
+                    break;
+                default:
+                    isInternetAvailable = false;
+                    break;
+            }
+
+            return isInternetAvailable;
         }
 
         #endregion
@@ -144,9 +168,10 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
         public long ClientSpotID { get; set; }
         public long DisplayEndpointID { get; set; }
         public string Name { get; set; }
-        public int SortOrder { get; set; }
+        public int? SortOrder { get; set; }
         public int Timeout { get; set; }
         public bool Active { get; set; }
+        public bool ShowProgressBar { get; set; }
         public MimeType ContentMimeType { get; set; }
         public string ContentSubject { get; set; }
         public string ContentCaption { get; set; }
