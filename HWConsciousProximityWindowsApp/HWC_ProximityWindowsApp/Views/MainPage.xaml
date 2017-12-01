@@ -108,20 +108,24 @@
         </Grid>
 
         <Grid x:Name="_notificationContainerGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Visibility="Collapsed" PointerPressed="NotificationContainerGrid_PointerPressed" PointerReleased="NotificationContainerGrid_PointerReleased">
-            <controls:ImageEx x:Name="_notificationImageEx"
-                IsCacheEnabled="True"
-                Source="{Binding Thumbnail}"
-                Stretch="Uniform"
-                PlaceholderSource="/Assets/ImageExPlaceholder.jpg"
-                PlaceholderStretch="UniformToFill"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"/>
+            <Viewbox>
+                <controls:ImageEx x:Name="_notificationImageEx"
+                    IsCacheEnabled="True"
+                    Source="{Binding Thumbnail}"
+                    Stretch="Uniform"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    ImageOpened="NotificationImageEx_ImageOpened" ImageFailed="NotificationImageEx_ImageFailed"/>
+            </Viewbox>
             <Viewbox>
                 <MediaElement x:Name="_notificationVideoPlayer" 
                     Width="1920"
                     Height="1080"
                     Stretch="Uniform"
-                    AutoPlay="True"/>
+                    AutoPlay="True" 
+                    IsLooping="True"
+                    RealTimePlayback="True"
+                    MediaOpened="NotificationVideoPlayer_MediaOpened" MediaFailed="NotificationVideoPlayer_MediaFailed"/>
             </Viewbox>
             <Grid x:Name="_notificationPressGrid" Margin="30, 0, 30, 30" VerticalAlignment="Bottom" Height="150" Visibility="Collapsed">
                 <Grid Opacity="0.6" Background="{StaticResource Black}"></Grid>
@@ -131,13 +135,16 @@
                     </Viewbox>
                 </Grid>
             </Grid>
-            <ProgressBar x:Name="_notificationProgressBar" Margin="0, 0, 0, 3" Height="5" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" IsIndeterminate="False" Foreground="{StaticResource PrimaryColor}" Visibility="Collapsed" />
+
+            <controls:ImageEx x:Name="_notificationLoadingImageEx" IsCacheEnabled="True" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="400" MaxHeight="300" />
+            <controls:ImageEx x:Name="_notificationLoadingErrorImageEx" IsCacheEnabled="True" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="900" MaxHeight="128" />
+            <ProgressBar x:Name="_notificationProgressBar" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" IsIndeterminate="False" Foreground="{StaticResource PrimaryColor}" Visibility="Collapsed" />
         </Grid>
 
         <Grid x:Name="_defaultContainerGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Visibility="Collapsed">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <!-- HWConscious logo -->
-                <Image x:Name="_hwcLogoBottomImage" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0" Stretch="None" Visibility="Visible" Source="ms-appx:///ProximityApp/MediaFiles/Logo_Hwc_Medium.png"/>
+                <Image x:Name="_hwcLogoBottomImage" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0" Stretch="Uniform" MaxWidth="611" MaxHeight="271" Source="ms-appx:///ProximityApp/MediaFiles/Logo_Hwc_Medium.png"/>
                 <ProgressRing x:Name="_progressRing" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,20,0,0" Height="40" Width="40" IsActive="True" Foreground="{StaticResource PrimaryColor}" />
             </StackPanel>
         </Grid>

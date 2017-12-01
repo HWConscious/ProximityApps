@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Windows.UI.Popups;
-using Windows.UI.Xaml.Media.Imaging;
+using Windows.Networking.Connectivity;
 using Windows.Storage;
 using Windows.Storage.Streams;
+using Windows.UI.Popups;
+using Windows.UI.Xaml.Media.Imaging;
 
 namespace HWC_ProximityWindowsApp.ProximityApp.Models
 {
@@ -36,6 +37,29 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
             {
                 throw new Exception("Error in showing MessageBox. " + ex.Message);
             }
+        }
+
+        /// <summary>
+        /// Gets internet availibility for the system.
+        /// </summary>
+        /// <returns></returns>
+        public static bool IsInternetAvailable()
+        {
+            bool isInternetAvailable = false;
+            
+            var connectivityLevel = NetworkInformation.GetInternetConnectionProfile()?.GetNetworkConnectivityLevel();
+            switch (connectivityLevel)
+            {
+                case NetworkConnectivityLevel.InternetAccess:
+                case NetworkConnectivityLevel.ConstrainedInternetAccess:
+                    isInternetAvailable = true;
+                    break;
+                default:
+                    isInternetAvailable = false;
+                    break;
+            }
+
+            return isInternetAvailable;
         }
 
         #endregion

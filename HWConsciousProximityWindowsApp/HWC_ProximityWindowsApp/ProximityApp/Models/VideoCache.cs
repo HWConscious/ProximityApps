@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using Windows.Media.Core;
 using Windows.Storage;
-using Windows.Storage.Streams;
+
 using Microsoft.Toolkit.Uwp.UI;
 
 namespace HWC_ProximityWindowsApp.ProximityApp.Models
@@ -35,9 +36,9 @@ namespace HWC_ProximityWindowsApp.ProximityApp.Models
         /// <param name="stream">input stream</param>
         /// <param name="initializerKeyValues">key value pairs used when initializing instance of generic type</param>
         /// <returns>Media source</returns>
-        protected override Task<MediaSource> InitializeTypeAsync(IRandomAccessStream stream, List<KeyValuePair<string, object>> initializerKeyValues = null)
+        protected override Task<MediaSource> InitializeTypeAsync(Stream stream, List<KeyValuePair<string, object>> initializerKeyValues = null)
         {
-            return Task.Run(() => MediaSource.CreateFromStream(stream, "video/mp4"));
+            return Task.Run(() => MediaSource.CreateFromStream(stream.AsRandomAccessStream(), "video/mp4"));
         }
 
         /// <summary>

@@ -2,16 +2,19 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Windows.Media.Core;
+using Windows.Storage;
+using Windows.System;
+using Windows.System.Power;
 using Windows.UI.Core;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Input;
+using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
-using Windows.Storage;
-using Windows.System;
-using Windows.System.Power;
-using Microsoft.Toolkit.Uwp;
+
+using Microsoft.Toolkit.Uwp.UI.Controls;
 
 using HWC_ProximityWindowsApp.ProximityApp.Models;
 
@@ -31,6 +34,8 @@ namespace HWC_ProximityWindowsApp
         private Notification _bufferedNotification { get; set; }
         private Dictionary<long, Notification> _receivedNotifications { get; set; }
         private bool _isNotificationShowing = false;
+        private bool _isNotificationMediaLoaded = false;
+        private bool _isNotificationMediaLoadingFailed = false;
         private bool _isUserEventConfirmationShowing = false;
 
         #endregion
@@ -59,12 +64,7 @@ namespace HWC_ProximityWindowsApp
                 // Create Notification timeout timer
                 _notificationTimeoutTimer = new DispatcherTimer();
                 _notificationTimeoutTimer.Tick += NotificationTimeoutTimer_Tick;
-
-                // Set Notification video player's default configurations
-                _notificationVideoPlayer.IsLooping = true;
-                _notificationVideoPlayer.RealTimePlayback = true;
-                _notificationVideoPlayer.MediaOpened += NotificationVideoPlayer_MediaOpened;
-
+                
                 // Cleanup expired video cache files
                 await VideoCache.Instance.RemoveExpiredAsync();
 
@@ -165,8 +165,8 @@ namespace HWC_ProximityWindowsApp
             {
                 _bufferedNotification = null;
                 string log = "Error in REST call for Notification pulling. EXCEPTION: " + ex.Message;
-                Log.DebugLog(log);
                 Log.LogAsync(Log.LoggingLevel.Error, log);
+                Log.DebugLog(log);
             }
         }
         
@@ -213,6 +213,12 @@ namespace HWC_ProximityWindowsApp
                         {
                             _isNotificationShowing = true;      // Set to true
 
+                            // Clean-up Notification's UI control
+                            CleanUpNotificationControl();
+
+                            // Assign the NotificationID to the Notification container UI panel
+                            _notificationContainerGrid.Tag = notificationToShow.NotificationID;
+
                             // Reset Notification progress bar
                             _notificationProgressBar.Value = 0;
                             _notificationProgressBar.Visibility = notificationToShow.ShowProgressBar ? Visibility.Visible : Visibility.Collapsed;
@@ -222,9 +228,10 @@ namespace HWC_ProximityWindowsApp
                             _notificationTimeoutTimer.Interval = TimeSpan.FromSeconds(1);
                             _notificationTimeoutTimer.Start();  // Start Notification timeout timer
 
-                            // Clean-up Notification's UI control
-                            CleanUpNotificationControl();
+                            // Start showing Notification in UI
+                            ShowNotificationLoadingAsync();
 
+                            // Set Notification's media content based on it's MIME type
                             switch (notificationToShow.ContentMimeType)
                             {
                                 case MimeType.ImagePng:
@@ -232,26 +239,31 @@ namespace HWC_ProximityWindowsApp
                                 case MimeType.ImageJpg:
                                     // Assign the Notification image content to it's UI image control
                                     _notificationImageEx.Source = BitmapImageProvider.GetImageFromRemoteSource(notificationToShow.ContentBody);
-                                    Log.DebugLog(">>>Show NotificationID (image content): " + notificationToShow.NotificationID);
+                                    var log = ">>>Show NotificationID (image content): " + notificationToShow.NotificationID;
+                                    Log.LogAsync(Log.LoggingLevel.Information, log);
+                                    Log.DebugLog(log);
                                     break;
 
                                 case MimeType.VideoMp4:
                                     var videoUri = new Uri(notificationToShow.ContentBody);
                                     // Assign the Notification video content to it's UI video control
-                                    _notificationVideoPlayer.SetPlaybackSource(await VideoCache.Instance.GetFromCacheAsync(videoUri));
-                                    Log.DebugLog(">>>Show NotificationID (video content): " + notificationToShow.NotificationID);
-                                    // Set video player's dimension for the video content
-                                    SetVideoPlayerDimensionAsync(videoUri);
+                                    MediaSource videoSource = null;
+                                    await Task.Run(async () => { videoSource = await VideoCache.Instance.GetFromCacheAsync(videoUri); } );
+                                    if (videoSource != null)
+                                    {
+                                        _notificationVideoPlayer.SetPlaybackSource(videoSource);
+                                        log = ">>>Show NotificationID (video content): " + notificationToShow.NotificationID;
+                                        Log.LogAsync(Log.LoggingLevel.Information, log);
+                                        Log.DebugLog(log);
+                                        // Set video player's dimension for the video content
+                                        SetVideoPlayerDimensionAsync(videoUri);
+                                    }
+                                    else
+                                    {
+                                        NotificationVideoPlayer_MediaFailed(_notificationVideoPlayer, null);
+                                    }
                                     break;
                             }
-
-                            _notificationContainerGrid.Tag = notificationToShow.NotificationID;
-
-                            // Show Notification panel
-                            _hideDefaultPanel.Begin();
-                            _showNotificationPanel.Begin();
-                            // Show notification-press panel if there are any Coupon associated with the Notification
-                            if (notificationToShow.Coupons?.Any() ?? false) { _showNotificationPressPanel.Begin(); }
                         }
                     }
                 }
@@ -263,17 +275,18 @@ namespace HWC_ProximityWindowsApp
         }
 
         // Notification timeout timer ticked event
-        private void NotificationTimeoutTimer_Tick(object sender, object e)
+        private async void NotificationTimeoutTimer_Tick(object sender, object e)
         {
             _notificationProgressBar.Value += 1;
             if (_notificationProgressBar.Value >= _notificationProgressBar.Maximum)
             {
+                await Task.Delay(100);
                 _notificationProgressBar.Visibility = Visibility.Collapsed;
 
                 // Stop the timer
                 _notificationTimeoutTimer.Stop();
                 _isNotificationShowing = false;     // Set to false
-
+                
                 // Recursive invoke
                 LoadOrUnloadNotification();
             }
@@ -304,8 +317,8 @@ namespace HWC_ProximityWindowsApp
                     string responseValue = await _eventRestClient.MakeRequestAsync();
 
                     string log = "Event sent successfully for NotificationID: " + notificationID;
-                    Log.DebugLog(log);
                     Log.LogAsync(Log.LoggingLevel.Information, log);
+                    Log.DebugLog(log);
 
                     // Show user-event confirmation panel
                     _hideNotificationPanel.Begin();
@@ -323,8 +336,8 @@ namespace HWC_ProximityWindowsApp
                 catch (Exception ex)
                 {
                     string log = "Error in REST call for user event pushing (NotificationID: " + notificationID + "). EXCEPTION: " + ex.Message;
-                    Log.DebugLog(log);
                     Log.LogAsync(Log.LoggingLevel.Error, log);
+                    Log.DebugLog(log);
                 }
 
                 _bufferedNotification = null;               // Clear the buffered Notification
@@ -349,9 +362,9 @@ namespace HWC_ProximityWindowsApp
                 await Utility.MessageBoxShowAsync("Checking for battery saving not done");
                 retValue = false;
             }
-
+            
             // Check if internet connection is available
-            if (!NetworkHelper.Instance.ConnectionInformation.IsInternetAvailable)
+            if (!Utility.IsInternetAvailable())
             {
                 InactiveProgressRing();
                 await Utility.MessageBoxShowAsync("Internet is not available");
@@ -458,11 +471,24 @@ namespace HWC_ProximityWindowsApp
 
         private void CleanUpNotificationControl()
         {
+            _notificationLoadingImageEx.Source = null;
+            _notificationLoadingErrorImageEx.Source = null;
             _notificationImageEx.Source = null;
             _notificationVideoPlayer.Source = null;
             _notificationContainerGrid.Tag = null;
+
             _hideNotificationPressPanel.Begin();
             _hideVideoNotification.Begin();
+        }
+
+        private async void ShowNotificationPressPanelAsync(long notificationID)
+        {
+            // Show notification-press panel if there are any Coupon associated with the Notification
+            if (_receivedNotifications[notificationID]?.Coupons?.Any() ?? false)
+            {
+                await Task.Delay(40);
+                _showNotificationPressPanel.Begin();
+            }
         }
 
         private async void SetVideoPlayerDimensionAsync(Uri videoUri)
@@ -489,6 +515,94 @@ namespace HWC_ProximityWindowsApp
             }
         }
 
+        private async void ShowNotificationLoadingAsync()
+        {
+            _isNotificationMediaLoaded = false;
+            _isNotificationMediaLoadingFailed = false;
+
+            // Show Notification panel
+            _hideDefaultPanel.Begin();
+            _showNotificationPanel.Begin();
+
+            // Show the Notification loading animation after delaying 0.5 second
+            await Task.Delay(500);
+            if (!_isNotificationMediaLoaded && !_isNotificationMediaLoadingFailed)
+            {
+                _notificationLoadingImageEx.Source = BitmapImageProvider.GetImageFromRemoteSource("ms-appx:///ProximityApp/MediaFiles/Image_Loading.gif"); ;
+            }
+        }
+
+        private void HideNotificationLoading()
+        {
+            _notificationLoadingImageEx.Source = null;
+        }
+
+        private void FailNotificationLoading()
+        {
+            _isNotificationMediaLoadingFailed = true;
+            HideNotificationLoading();
+            _notificationLoadingErrorImageEx.Source = BitmapImageProvider.GetImageFromRemoteSource("ms-appx:///ProximityApp/MediaFiles/Image_MediaNotLoaded.png");
+        }
+
+        private void NotificationImageEx_ImageOpened(object sender, RoutedEventArgs e)
+        {
+            _isNotificationMediaLoaded = true;
+            HideNotificationLoading();
+
+            try
+            {
+                long notificationID = (long)(((sender as ImageEx)?.Parent as Viewbox)?.Parent as Grid)?.Tag;    // Get the NotificationID from Notification's UI panel control
+                ShowNotificationPressPanelAsync(notificationID);
+            }
+            catch (Exception ex)
+            {
+                string log = "Invalid NotificationID at Notification image open event. EXCEPTION: " + ex.Message;
+                Log.LogAsync(Log.LoggingLevel.Error, log);
+                Log.DebugLog(log);
+            }
+        }
+
+        private void NotificationVideoPlayer_MediaOpened(object sender, RoutedEventArgs e)
+        {
+            _isNotificationMediaLoaded = true;
+            HideNotificationLoading();
+
+            _showVideoNotification.Stop();
+            _showVideoNotification.Begin();
+
+            try
+            {
+                long notificationID = (long)(((sender as MediaElement)?.Parent as Viewbox)?.Parent as Grid)?.Tag;   // Get the NotificationID from Notification's UI panel control
+                ShowNotificationPressPanelAsync(notificationID);
+            }
+            catch (Exception ex)
+            {
+                string log = "Invalid NotificationID at Notification video open event. EXCEPTION: " + ex.Message;
+                Log.LogAsync(Log.LoggingLevel.Error, log);
+                Log.DebugLog(log);
+            }
+        }
+
+        private void NotificationImageEx_ImageFailed(object sender, ExceptionRoutedEventArgs e)
+        {
+            FailNotificationLoading();
+
+            var imageControl = sender as ImageEx;
+            var log = "Image media loading error for Notification ID: " + ((imageControl?.Parent as Viewbox)?.Parent as Grid)?.Tag?.ToString() + ", URI: " + (imageControl?.Source as BitmapImage)?.UriSource?.ToString() + " EXCEPTION: " + (e?.ErrorMessage ?? "Image media not found");
+            Log.LogAsync(Log.LoggingLevel.Error, log);
+            Log.DebugLog(log);
+        }
+
+        private void NotificationVideoPlayer_MediaFailed(object sender, ExceptionRoutedEventArgs e)
+        {
+            FailNotificationLoading();
+
+            var videoControl = sender as MediaElement;
+            var log = "Video media loading error for Notification ID: " + ((videoControl?.Parent as Viewbox)?.Parent as Grid)?.Tag?.ToString() + ", URI: " + videoControl?.Source?.ToString() + " EXCEPTION: " + (e?.ErrorMessage ?? "Video media not found");
+            Log.LogAsync(Log.LoggingLevel.Error, log);
+            Log.DebugLog(log);
+        }
+
         private void NotificationContainerGrid_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
             try
@@ -498,11 +612,11 @@ namespace HWC_ProximityWindowsApp
             catch (Exception ex)
             {
                 string log = "Notification panel pointer-press event error. EXCEPTION: " + ex.Message;
-                Log.DebugLog(log);
                 Log.LogAsync(Log.LoggingLevel.Error, log);
+                Log.DebugLog(log);
             }
 
-            if (!_isUserEventConfirmationShowing)
+            if (!_isUserEventConfirmationShowing && _isNotificationMediaLoaded)
             {
                 try
                 {
@@ -515,8 +629,8 @@ namespace HWC_ProximityWindowsApp
                 catch (Exception ex)
                 {
                     string log = "Invalid NotificationID at Notification panel pointer-press event. EXCEPTION: " + ex.Message;
-                    Log.DebugLog(log);
                     Log.LogAsync(Log.LoggingLevel.Error, log);
+                    Log.DebugLog(log);
                 }
             }
         }
@@ -531,15 +645,9 @@ namespace HWC_ProximityWindowsApp
             catch (Exception ex)
             {
                 string log = "Notification panel pointer-release event error. EXCEPTION: " + ex.Message;
-                Log.DebugLog(log);
                 Log.LogAsync(Log.LoggingLevel.Error, log);
+                Log.DebugLog(log);
             }
-        }
-        
-        private void NotificationVideoPlayer_MediaOpened(object sender, RoutedEventArgs e)
-        {
-            _showVideoNotification.Stop();
-            _showVideoNotification.Begin();
         }
 
         private void Window_VisibilityChanged(object sender, VisibilityChangedEventArgs e)
