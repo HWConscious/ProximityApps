@@ -298,10 +298,8 @@ namespace HWC_ProximityWindowsApp
             // Validate the NotificationID and event type as 'DisplayEndpoint_Touch'
             if (notificationID > 0 && eventType == EventType.DisplayEndpoint_Touch)
             {
-                _isNotificationShowing = false;             // Set to false
                 _bufferedNotification = null;               // Clear the buffered Notification
                 _isUserEventConfirmationShowing = true;     // Set to true
-                _notificationTimeoutTimer.Stop();           // Stop Notification timeout timer
                 _notificationPullTimer.Stop();              // Stop Notification pull timer
 
                 try
@@ -319,6 +317,11 @@ namespace HWC_ProximityWindowsApp
                     string log = "Event sent successfully for NotificationID: " + notificationID;
                     Log.LogAsync(Log.LoggingLevel.Information, log);
                     Log.DebugLog(log);
+
+
+                    // Stop Notification timeout timer
+                    _notificationTimeoutTimer.Stop();
+                    _isNotificationShowing = false;
 
                     // Show user-event confirmation panel
                     _hideNotificationPanel.Begin();
